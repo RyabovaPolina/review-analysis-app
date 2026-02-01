@@ -1,0 +1,28 @@
+.container-new-analyse-img {
+  height: 400px;
+  width: 50%;
+}
+
+.new-analyse-text {
+  font-size: 32px;
+  color: #e8e0e0;
+  letter-spacing: -7%;
+  font-weight: 100;
+}
+
+.new-analyse-text .bold {
+  font-weight: 600;
+}
+
+.new-analyse-text-container {
+  width: 320px;
+  margin-left: 45px;
+  padding-top: 70px;
+}
+
+.container-new-analyse {
+  display: flex;
+  
+  background-image: url("new-analyse-img.png");
+  background-repeat: no-repeat;
+}

@@ -1,0 +1,132 @@
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  backdrop-filter: blur(3px);
+  overflow: hidden;
+}
+
+.container-popup {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.8rem;
+  max-width: 800px;
+  margin: 0 auto;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.container-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+.popup-description {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.container-mapping-columns {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.container-mapping-columns label {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.container-mapping-columns select:focus {
+  outline: none;
+  border-color: #27294a;
+  box-shadow: 0 0 0 2px rgba(1, 65, 130, 0.1);
+}
+
+.preview-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.preview-section h3 {
+  margin: 0 0 0.75rem 0;
+  flex-shrink: 0;
+}
+
+.preview-table-wrapper {
+  flex: 1;
+  overflow: auto;
+  border-radius: 0.8rem;
+  border: 1px solid #e9ecef;
+  min-height: 200px;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+  border-spacing: 0;
+}
+
+
+.preview-table thead {
+  background: #cacbe1;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.preview-table th {
+  padding: 0.75rem 0.8rem;
+  text-align: left;
+  font-weight: 600;
+  color: #27294a;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+  position: relative;
+}
+
+.preview-table tbody tr {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.preview-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.preview-table td {
+  padding: 0.75rem 0.8rem;
+  color: #27294a;
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+
+.popup-next:hover:not(:disabled) {
+  background-color: #1d1f38;
+}
+
+.popup-next:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
