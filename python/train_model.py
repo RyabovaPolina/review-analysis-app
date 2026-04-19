@@ -120,7 +120,7 @@ def train_final_model(X, y):
     print("\n📊 Создание TF-IDF векторизатора...")
     vectorizer = TfidfVectorizer(
         max_features=5000,      # Максимум 5000 признаков
-        ngram_range=(1, 1),     # uni-grams
+        ngram_range=(1, 3),     # uni-grams bi-grams tri-grams
         min_df=2,               # Слово должно встретиться минимум в 2 документах
         max_df=0.8,             # Игнорировать слова, встречающиеся более чем в 80% документов
         sublinear_tf=True       # Применить логарифмическое масштабирование TF
