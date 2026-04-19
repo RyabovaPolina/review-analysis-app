@@ -119,7 +119,7 @@ def train_final_model(X, y):
     # Векторизатор TF-IDF
     print("\n📊 Создание TF-IDF векторизатора...")
     vectorizer = TfidfVectorizer(
-        max_features=5000,      # Максимум 5000 признаков
+        max_features=10000,      # Максимум 10000 признаков
         ngram_range=(1, 3),     # uni-grams bi-grams tri-grams
         min_df=2,               # Слово должно встретиться минимум в 2 документах
         max_df=0.8,             # Игнорировать слова, встречающиеся более чем в 80% документов
@@ -157,12 +157,7 @@ def train_final_model(X, y):
     
     # Переобучаем на всех данных
     print("\n🔧 Переобучение на всех данных...")
-    final_model = LogisticRegression(
-        solver='saga',
-        max_iter=200,
-        class_weight='balanced',
-        random_state=42
-    )
+    final_model = best_model
     final_model.fit(X_vectorized, y)
     
     # Сохранение
@@ -172,16 +167,19 @@ def train_final_model(X, y):
     print("✅ Модели сохранены в директорию models/")
     
     # Топ важных признаков
-    print("\n🔍 Топ-20 признаков для каждого класса:")
+    if hasattr(final_model, "coef_"):
+        print("\n🔍 Топ-20 признаков для каждого класса:")
+
     feature_names = vectorizer.get_feature_names_out()
-    
+
     for idx, class_label in enumerate(final_model.classes_):
         print(f"\n  Класс '{class_label}':")
+
         coefs = final_model.coef_[idx]
         top_indices = np.argsort(coefs)[-20:][::-1]
-        top_features = [(feature_names[i], coefs[i]) for i in top_indices]
-        for feature, coef in top_features[:10]:
-            print(f"    {feature}: {coef:.4f}")
+
+        for i in top_indices[:10]:
+            print(f"    {feature_names[i]}: {coefs[i]:.4f}")
     
     return vectorizer, final_model
 
