@@ -11,16 +11,29 @@ def rating_to_sentiment(rating):
 
     try:
 
-        rating = float(str(rating).strip().replace(",", "."))
+        rating = int(float(
+            str(rating)
+            .strip()
+            .replace(",", ".")
+        ))
 
-        if rating <= 2.5:
-            return 'negative'
-        elif rating >= 4.0:
-            return 'positive'
+        # 1–2 → negative
+        if rating in [1, 2]:
+            return "negative"
+
+        # 3–4 → neutral
+        elif rating in [3, 4]:
+            return "neutral"
+
+        # 5 → positive
+        elif rating == 5:
+            return "positive"
+
         else:
-            return 'neutral'
-    except:
-        return 'neutral'
+            return None
+
+    except Exception:
+        return None
     
 print("Загрузка файла...")
 
