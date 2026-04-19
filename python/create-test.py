@@ -4,7 +4,7 @@ INPUT_FILE = "data/geo-reviews-dataset-2023.csv"
 
 OUTPUT_FILE = "data/training_dataset.csv"
 
-SAMPLES_PER_CLASS = 5600
+SAMPLES_PER_CLASS = 20000
 
 
 def rating_to_sentiment(rating):
