@@ -1,0 +1,34 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Python
+python/venv/
+python/__pycache__/
+*.pyc
+
+# Uploads
+server/uploads/
+uploads/
+
+# Build
+dist/
+build/
+client/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

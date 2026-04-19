@@ -1,0 +1,104 @@
+.container-page-content > h2{
+  margin-bottom: 1.5rem;
+}
+
+.container-upload-process{
+  display: grid;
+  grid-template-rows: 0.8fr 2fr 0.3fr;
+  gap: 1.5rem;
+}
+
+.container-header-process{
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.description{
+  font-size: 1.15rem;
+}
+
+.container-header-process > h3, .preview-section >h3{
+  font-size: 1.25rem;
+
+}
+
+.preview-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  max-height: 500px;
+}
+
+.preview-section h3 {
+  margin: 0 0 0.75rem 0;
+}
+
+.preview-table-wrapper {
+  flex: 1;
+  overflow: auto;
+  border-radius: 0.8rem;
+  border: 1px solid #e9ecef;
+  min-height: 200px;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+  border-spacing: 0;
+  max-height: 40%;
+}
+
+
+.preview-table thead {
+  background: #cacbe1;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.preview-table th {
+  padding: 0.75rem 0.8rem;
+  text-align: left;
+  font-weight: 600;
+  color: #27294a;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+  position: relative;
+}
+
+.preview-table tbody tr {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.preview-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.preview-table td {
+  padding: 0.75rem 0.8rem;
+  color: #27294a;
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+.container-btns{
+  display: flex;
+  gap: 30rem;
+}
+
+.primary{
+  flex: 2;
+}
+
+.secondary{
+  background-color: #b4b5ba;
+  flex: 1;
+}
+
+
+.secondary:hover{
+  background-color: #b4b5ba;
+}

@@ -5,9 +5,11 @@
     "start": "tsx app.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.989.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",

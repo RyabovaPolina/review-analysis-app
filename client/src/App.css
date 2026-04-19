@@ -1,8 +1,10 @@
 body,
-p {
+p,h1,h2,h3 {
   font-family: Inter;
   margin: 0;
   padding: 0;
+  overflow: hidden;
+    color: #27294a;
 }
 
 .container-page {
@@ -81,7 +83,7 @@ button:hover {
 .app-layout {
   display: flex;
   height: 100vh;
-  padding: 1.5rem;
+  padding: 1.5rem 1.5rem 1.5rem 1.5rem;
 }
 
 .main-area {

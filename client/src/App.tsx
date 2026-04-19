@@ -6,6 +6,8 @@ import PersonalCabinet from "./pages/personal-cabinet";
 import EmailPage from "./pages/email-page";
 import ResetPasswordPage from "./pages/reset-password-page";
 import NewAnalysePage from "./pages/new-analyse-page/new-analyse-page";
+import UploadProcessingPage from "./pages/upload-processing-page/upload-processing-page";
+import ResultPage from "./pages/result-page/result-page";
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
         <Route path="/" element={<PersonalCabinet />} />
         <Route path="/personal" element={<PersonalCabinet />} />
         <Route path="/new-analyse" element={<NewAnalysePage />} />
+        <Route path="/upload-process" element={<UploadProcessingPage />} />
+        <Route path="/result" element={<ResultPage />} />
         {/* сюда же потом Dashboard, History, NewAnalysis */}
       </Route>
     </Routes>
