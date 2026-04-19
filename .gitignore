@@ -29,6 +29,9 @@ client/dist/
 *.swo
 *~
 
+# модели машинного обучения
+*.pkl
+
 # OS
 .DS_Store
 Thumbs.db
