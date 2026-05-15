@@ -117,3 +117,92 @@
   margin-top: 10px;
   font-size: 0.9rem;
 }
+
+.keywords-section {
+  margin-top: 30px;
+}
+
+.keywords-group {
+  margin-bottom: 25px;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.keywords-group.positive {
+  background: #e8f8f0;
+}
+
+.keywords-group.negative {
+  background: #fdecea;
+}
+
+.keywords-group.neutral {
+  background: #eef2f7;
+}
+
+.keywords-subgroup {
+  margin-top: 10px;
+}
+
+.keywords-subgroup ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* ПРОБЛЕМЫ */
+.problems-section {
+  margin-top: 30px;
+}
+
+.problem-card {
+  border: 1px solid #eee;
+  border-left: 4px solid #ff4d4f;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
+
+.problem-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.problem-stats {
+  font-size: 14px;
+  color: #555;
+}
+
+/* РЕКОМЕНДАЦИИ */
+.recommendations-section {
+  margin-top: 30px;
+}
+
+.recommendation-card {
+  border: 1px solid #eee;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+}
+
+.recommendation-card.problem {
+  border-left: 4px solid #ff4d4f;
+}
+
+.recommendation-card.opportunity {
+  border-left: 4px solid #52c41a;
+}
+
+.recommendation-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rec-action {
+  background: #fafafa;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: pre-wrap;
+}

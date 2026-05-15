@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 
-// РџРѕР»СѓС‡Р°РµРј __dirname РґР»СЏ ES modules
+// Получаем __dirname для ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -44,10 +44,10 @@ function detectSeparator(line: string): string {
   return detected;
 }
 
-// 1пёЏвѓЈ Р—Р°РіСЂСѓР·РєР° Рё РїСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ С„Р°Р№Р»Р°
+// 1?? Загрузка и предпросмотр файла
 router.post("/upload", upload.single("csv"), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ message: "Р¤Р°Р№Р» РЅРµ Р·Р°РіСЂСѓР¶РµРЅ" });
+    return res.status(400).json({ message: "Файл не загружен" });
   }
 
   const filePath = req.file.path;
@@ -85,10 +85,10 @@ router.post("/upload", upload.single("csv"), async (req, res) => {
 
     const tempFileId = result.rows[0].id;
 
-    // РРЎРџР РђР’Р›Р•РќРћ: СѓР±СЂР°Р»Рё РґСѓР±Р»РёСЂРѕРІР°РЅРёРµ "server"
+    // ИСПРАВЛЕНО: убрали дублирование "server"
     const tempFilePath = path.join("uploads", `${tempFileId}.csv`);
 
-    // РЎРѕР·РґР°С‘Рј РїР°РїРєСѓ uploads РµСЃР»Рё РµС‘ РЅРµС‚
+    // Создаём папку uploads если её нет
     if (!fs.existsSync("uploads")) {
       fs.mkdirSync("uploads", { recursive: true });
     }
@@ -96,7 +96,7 @@ router.post("/upload", upload.single("csv"), async (req, res) => {
     fs.renameSync(filePath, tempFilePath);
 
     res.json({
-      message: "Р¤Р°Р№Р» Р·Р°РіСЂСѓР¶РµРЅ РґР»СЏ РїСЂРµРґРїСЂРѕСЃРјРѕС‚СЂР°",
+      message: "Файл загружен для предпросмотра",
       fileId: tempFileId,
       separator,
       headers,
@@ -107,11 +107,11 @@ router.post("/upload", upload.single("csv"), async (req, res) => {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
-    res.status(500).json({ message: "РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё С„Р°Р№Р»Р°" });
+    res.status(500).json({ message: "Ошибка загрузки файла" });
   }
 });
 
-// 2пёЏвѓЈ РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РјР°РїРїРёРЅРіР° Рё Р·Р°РіСЂСѓР·РєР° РІ S3
+// 2?? Подтверждение маппинга и загрузка в S3
 router.post("/confirm-mapping/:fileId", async (req, res) => {
   const { fileId } = req.params;
   const { mapping } = req.body;
@@ -125,18 +125,18 @@ router.post("/confirm-mapping/:fileId", async (req, res) => {
     if (fileResult.rows.length === 0) {
       return res
         .status(404)
-        .json({ message: "Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ РёР»Рё СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅ" });
+        .json({ message: "Файл не найден или уже обработан" });
     }
 
     const fileInfo = fileResult.rows[0];
 
-    // РРЎРџР РђР’Р›Р•РќРћ: СѓР±СЂР°Р»Рё РґСѓР±Р»РёСЂРѕРІР°РЅРёРµ "server"
+    // ИСПРАВЛЕНО: убрали дублирование "server"
     const tempFilePath = path.join("uploads", `${fileId}.csv`);
 
-    console.log("рџ“‚ РС‰РµРј С„Р°Р№Р»:", tempFilePath);
+    console.log("?? Ищем файл:", tempFilePath);
 
     if (!fs.existsSync(tempFilePath)) {
-      return res.status(404).json({ message: "Р’СЂРµРјРµРЅРЅС‹Р№ С„Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ" });
+      return res.status(404).json({ message: "Временный файл не найден" });
     }
 
     const separator = fileInfo.separator;
@@ -168,17 +168,17 @@ router.post("/confirm-mapping/:fileId", async (req, res) => {
       return newRow;
     });
 
-    // Р’ С„СѓРЅРєС†РёРё confirm-mapping, РіРґРµ РєРѕРЅРІРµСЂС‚РёСЂСѓРµРј РІ CSV:
+    // В функции confirm-mapping, где конвертируем в CSV:
     const headers = Object.keys(renamedRows[0]);
 
-    // РџСЂР°РІРёР»СЊРЅРѕРµ СЌРєСЂР°РЅРёСЂРѕРІР°РЅРёРµ CSV
+    // Правильное экранирование CSV
     const csvContent = [
-      headers.map((h) => `"${h}"`).join(","), // Р·Р°РіРѕР»РѕРІРєРё РІСЃРµРіРґР° РІ РєР°РІС‹С‡РєР°С…
+      headers.map((h) => `"${h}"`).join(","), // заголовки всегда в кавычках
       ...renamedRows.map((row) =>
         headers
           .map((h) => {
             const value = row[h] || "";
-            // Р­РєСЂР°РЅРёСЂСѓРµРј РєР°РІС‹С‡РєРё РІРЅСѓС‚СЂРё Р·РЅР°С‡РµРЅРёР№
+            // Экранируем кавычки внутри значений
             const escaped = String(value).replace(/"/g, '""');
             return `"${escaped}"`;
           })
@@ -218,18 +218,18 @@ router.post("/confirm-mapping/:fileId", async (req, res) => {
     fs.unlinkSync(tempFilePath);
 
     res.json({
-      message: "Р¤Р°Р№Р» СѓСЃРїРµС€РЅРѕ РѕР±СЂР°Р±РѕС‚Р°РЅ Рё Р·Р°РіСЂСѓР¶РµРЅ",
+      message: "Файл успешно обработан и загружен",
       fileId,
       s3Key,
       mapping,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "РћС€РёР±РєР° РѕР±СЂР°Р±РѕС‚РєРё РјР°РїРїРёРЅРіР°" });
+    res.status(500).json({ message: "Ошибка обработки маппинга" });
   }
 });
 
-// 3пёЏвѓЈ Р—Р°РїСѓСЃРє Р°РЅР°Р»РёР·Р°
+// 3?? Анализ файла (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 router.post("/analyze/:fileId", async (req, res) => {
   const { fileId } = req.params;
 
@@ -240,13 +240,13 @@ router.post("/analyze/:fileId", async (req, res) => {
     );
 
     if (fileResult.rows.length === 0) {
-      return res.status(404).json({ message: "Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ" });
+      return res.status(404).json({ message: "Файл не найден" });
     }
 
     const { s3_key, status } = fileResult.rows[0];
 
     if (status !== "uploaded") {
-      return res.status(400).json({ message: "Р¤Р°Р№Р» РЅРµ РіРѕС‚РѕРІ Рє Р°РЅР°Р»РёР·Сѓ" });
+      return res.status(400).json({ message: "Файл не готов к анализу" });
     }
 
     await pool.query("UPDATE uploaded_files SET status = $1 WHERE id = $2", [
@@ -254,18 +254,19 @@ router.post("/analyze/:fileId", async (req, res) => {
       fileId,
     ]);
 
-    // РРЎРџР РђР’Р›Р•РќРћ: РёСЃРїРѕР»СЊР·СѓРµРј __dirname РґР»СЏ РїСЂР°РІРёР»СЊРЅРѕРіРѕ РїСѓС‚Рё
-    // РџРѕР»РЅС‹Р№ РїСѓС‚СЊ Рє Python РёР· venv
     const pythonPath = path.join(
       __dirname,
-      "../../python/venv/Scripts/python.exe"
+      "../../venv/Scripts/python.exe"
     );
 
-    const pythonScriptPath = path.join(__dirname, "../../python/analysis.py");
+    const pythonScriptPath = path.join(
+      __dirname,
+      "../../python/analyse/analysis.py"
+    );
 
-    console.log("рџђЌ Python script path:", pythonScriptPath);
-    console.log("рџ“‚ File exists:", fs.existsSync(pythonScriptPath));
-    console.log("рџ“‚ Current working dir:", process.cwd());
+    console.log("?? Python script path:", pythonScriptPath);
+    console.log("?? File exists:", fs.existsSync(pythonScriptPath));
+    console.log("?? Current working dir:", process.cwd());
 
     if (!fs.existsSync(pythonScriptPath)) {
       await pool.query("UPDATE uploaded_files SET status = $1 WHERE id = $2", [
@@ -273,69 +274,96 @@ router.post("/analyze/:fileId", async (req, res) => {
         fileId,
       ]);
       return res.status(500).json({
-        message: "Python СЃРєСЂРёРїС‚ РЅРµ РЅР°Р№РґРµРЅ",
+        message: "Python скрипт не найден",
         path: pythonScriptPath,
       });
     }
+
     const pythonProcess = spawn(
       pythonPath,
       [pythonScriptPath, s3_key, "text"],
       {
         shell: false,
-        cwd: path.join(__dirname, "../.."), // РєРѕСЂРµРЅСЊ РїСЂРѕРµРєС‚Р°
-        env: { ...process.env },
+        cwd: path.join(__dirname, "../../python/analyse"),
+        env: { 
+          ...process.env, 
+          PYTHONIOENCODING: "utf-8",  
+          PYTHONPATH: path.resolve(__dirname, "../python"),
+        },
       }
     );
 
-    let pythonOutput = "";
-    let pythonError = "";
+    // ? ИСПРАВЛЕНИЕ: Отдельно собираем stdout и stderr
+    let pythonStdout = "";
+    let pythonStderr = "";
 
     pythonProcess.stdout.on("data", (data: Buffer) => {
-      const output = data.toString();
-      console.log("Python stdout:", output);
-      pythonOutput += output;
+      const output = data.toString("utf8");
+      console.log("[STDOUT]", output);
+      pythonStdout += output;
     });
 
     pythonProcess.stderr.on("data", (data: Buffer) => {
-      const error = data.toString();
-      console.error("Python stderr:", error);
-      pythonError += error;
+      const error = data.toString("utf8");
+      console.log("[STDERR]", error);  // Логи из stderr видны в консоли сервера
+      pythonStderr += error;
     });
 
     pythonProcess.on("error", (error) => {
-      console.error("РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° Python:", error);
+      console.error("Ошибка запуска Python:", error);
     });
 
     pythonProcess.on("close", async (code: number) => {
-      console.log(`Python РїСЂРѕС†РµСЃСЃ Р·Р°РІРµСЂС€РёР»СЃСЏ СЃ РєРѕРґРѕРј ${code}`);
+      console.log(`Python процесс завершился с кодом ${code}`);
 
       if (code !== 0) {
-        console.error("Python error:", pythonError);
+        console.error("Python завершился с ошибкой:");
+        console.error("STDOUT:", pythonStdout);
+        console.error("STDERR:", pythonStderr);
+        
         await pool.query(
           "UPDATE uploaded_files SET status = $1 WHERE id = $2",
           ["failed", fileId]
         );
         return res.status(500).json({
-          message: "РћС€РёР±РєР° Р°РЅР°Р»РёР·Р°",
-          error: pythonError || "Python Р·Р°РІРµСЂС€РёР»СЃСЏ СЃ РѕС€РёР±РєРѕР№",
+          message: "Ошибка анализа",
+          error: pythonStderr || "Python завершился с ошибкой",
+          stdout: pythonStdout.substring(0, 500), // Первые 500 символов для отладки
         });
       }
 
       try {
-        const result = JSON.parse(pythonOutput);
+        // ? ИСПРАВЛЕНИЕ: Парсим ТОЛЬКО stdout (там JSON)
+        const result = JSON.parse(pythonStdout);
 
         await pool.query(
           `INSERT INTO analysis_results 
-           (file_id, s3_result_key, positive_count, negative_count, neutral_count, total_reviews, avg_sentiment_score)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          (
+            file_id,
+            s3_result_key,
+            positive_count,
+            negative_count,
+            neutral_count,
+            total_reviews,
+            avg_sentiment_score,
+            metadata
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             fileId,
             result.result_key,
-            result.positive_count,
-            result.negative_count,
-            result.neutral_count,
-            result.total_reviews,
-            result.avg_sentiment_score,
+            result.sentiment_analysis.positive_count,
+            result.sentiment_analysis.negative_count,
+            result.sentiment_analysis.neutral_count,
+            result.sentiment_analysis.total_reviews,
+            result.sentiment_analysis.avg_sentiment_score,
+            JSON.stringify({
+              keywords: result.keywords,
+              aspect_analysis: result.aspect_analysis,
+              top_problems: result.top_problems,
+              top_strengths: result.top_strengths,
+              recommendations: result.recommendations,
+            })
           ]
         );
 
@@ -345,34 +373,43 @@ router.post("/analyze/:fileId", async (req, res) => {
         );
 
         res.json({
-          message: "РђРЅР°Р»РёР· Р·Р°РІРµСЂС€РµРЅ",
+          message: "Анализ завершен",
           results: result,
         });
       } catch (error) {
-        console.error("РћС€РёР±РєР° РїР°СЂСЃРёРЅРіР° СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ:", error);
+        console.error("? Ошибка парсинга JSON результатов:", error);
+        console.error("Попытались распарсить:", pythonStdout.substring(0, 200));
+        
         await pool.query(
           "UPDATE uploaded_files SET status = $1 WHERE id = $2",
           ["failed", fileId]
         );
+        
         res.status(500).json({
-          message: "РћС€РёР±РєР° РѕР±СЂР°Р±РѕС‚РєРё СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ",
-          output: pythonOutput,
+          message: "Ошибка обработки результатов",
+          error: String(error),
+          stdout_preview: pythonStdout.substring(0, 500),
+          stderr_preview: pythonStderr.substring(0, 500),
         });
       }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° Р°РЅР°Р»РёР·Р°" });
+    res.status(500).json({ message: "Ошибка запуска анализа" });
   }
 });
 
-// 4пёЏвѓЈ РџРѕР»СѓС‡РµРЅРёРµ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ
+// 4?? Получение результатов
 router.get("/results/:fileId", async (req, res) => {
   const { fileId } = req.params;
 
   try {
     const result = await pool.query(
-      `SELECT ar.*, uf.original_filename, uf.upload_date, uf.column_mapping
+      `SELECT 
+         ar.*,
+         uf.original_filename,
+         uf.upload_date,
+         uf.column_mapping
        FROM analysis_results ar
        JOIN uploaded_files uf ON ar.file_id = uf.id
        WHERE ar.file_id = $1`,
@@ -380,13 +417,37 @@ router.get("/results/:fileId", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Р РµР·СѓР»СЊС‚Р°С‚С‹ РЅРµ РЅР°Р№РґРµРЅС‹" });
+      return res.status(404).json({
+        message: "Результаты не найдены",
+      });
     }
 
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+
+    res.json({
+      id: row.id,
+      file_id: row.file_id,
+      s3_result_key: row.s3_result_key,
+
+      positive_count: row.positive_count,
+      negative_count: row.negative_count,
+      neutral_count: row.neutral_count,
+      total_reviews: row.total_reviews,
+      avg_sentiment_score: row.avg_sentiment_score,
+
+      analysis_date: row.analysis_date,
+
+      original_filename: row.original_filename,
+      upload_date: row.upload_date,
+
+      analysis_data: row.metadata // ? вся аналитика здесь
+    });
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ" });
+    res.status(500).json({
+      message: "Ошибка получения результатов",
+    });
   }
 });
 

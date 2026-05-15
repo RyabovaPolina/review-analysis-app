@@ -1,5 +1,21 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
+interface KeywordItem {
+  text: string;
+  score: number;
+}
+
+interface KeywordGroup {
+  unigrams: KeywordItem[];
+  bigrams: KeywordItem[];
+}
+
+interface Keywords {
+  positive: KeywordGroup;
+  negative: KeywordGroup;
+  neutral: KeywordGroup;
+}
+
 interface AnalyseUploadResponse {
   message: string;
   fileId: number;
@@ -14,16 +30,58 @@ interface ConfirmMappingResponse {
   mapping: Record<string, string>;
 }
 
-interface AnalyzeResponse {
-  message: string;
-  results: {
+interface AnalysisResults {
+  summary: {
+    total_reviews: number;
+    positive_count: number;
+    negative_count: number;
+    neutral_count: number;
+    positive_pct: number;
+    negative_pct: number;
+    neutral_pct: number;
+  };
+
+  sentiment_analysis: {
     positive_count: number;
     negative_count: number;
     neutral_count: number;
     total_reviews: number;
     avg_sentiment_score: number;
-    result_key: string;
   };
+
+  aspect_analysis: {
+    positive: Record<string, any>;
+    negative: Record<string, any>;
+    neutral: Record<string, any>;
+  };
+
+  top_problems: {
+    aspect: string;
+    issue_score: number;
+    mentions: number;
+    coverage_pct: number;
+    severity: string;
+    avg_sentiment: number;
+  }[];
+
+  top_strengths: {
+    aspect: string;
+    strength_score: number;
+    mentions: number;
+    coverage_pct: number;
+    avg_sentiment: number;
+  }[];
+
+  recommendations: any[];
+
+  keywords: Keywords;
+
+  result_key: string;
+}
+
+interface AnalyzeResponse {
+  message: string;
+  results: AnalysisResults;
 }
 
 interface AnalyseState {

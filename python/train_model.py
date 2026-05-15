@@ -1,18 +1,31 @@
 """
-Скрипт для обучения модели классификации тональности
-Эксперимент 3.3.5 — word + char n-grams
+ФИНАЛЬНЫЙ СКРИПТ ОБУЧЕНИЯ
+- Без утечек данных
+- Сравнение моделей
+- RandomizedSearchCV для LogisticRegression (лучшая модель)
+- StratifiedKFold
 """
-
+import json
 import pandas as pd
-import numpy as np
 import joblib
 import os
 
-from scipy.sparse import hstack
+from sklearn.model_selection import (
+    train_test_split,
+    StratifiedKFold,
+    RandomizedSearchCV
+)
+
+from error_analysis import analyze_model_errors
+
 
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import RandomForestClassifier
+
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -20,343 +33,237 @@ from sklearn.metrics import (
     f1_score
 )
 
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.svm import LinearSVC
-from sklearn.ensemble import RandomForestClassifier
-
 from preprocessing import preprocess_corpus, preprocess_text
 
-
-# создаём директорию для моделей
 os.makedirs("models", exist_ok=True)
 
 
+# =========================
+# DATA
+# =========================
+
+def load_class_weights(filepath="data/class_weights.json"):
+    with open(filepath, "r", encoding="utf-8") as f:
+        return json.load(f)
+    
 def load_training_data(filepath="data/training_dataset.csv"):
-
-    print(f"📥 Загрузка данных из {filepath}...")
-
     df = pd.read_csv(filepath)
 
-    print(f"✅ Загружено {len(df)} отзывов")
-
-    print("📊 Распределение классов:")
-
+    print(f"📥 Загружено: {len(df)}")
     print(df["sentiment"].value_counts())
 
     return df
 
 
-def compare_models(X_train, X_test, y_train, y_test):
+# =========================
+# FEATURES
+# =========================
 
-    print("\n" + "=" * 70)
-    print("СРАВНЕНИЕ МОДЕЛЕЙ")
-    print("=" * 70)
+def build_feature_union():
+    return FeatureUnion([
+        (
+            "word",
+            TfidfVectorizer(
+                max_features=10000,
+                ngram_range=(1, 3),
+                min_df=2,
+                max_df=0.8,
+                sublinear_tf=True,
+            ),
+        ),
+        (
+            "char",
+            TfidfVectorizer(
+                analyzer="char_wb",
+                ngram_range=(3, 5),
+                max_features=5000,
+            ),
+        ),
+    ])
+
+
+# =========================
+# MODEL COMPARISON
+# =========================
+
+def compare_models(X_train, X_test, y_train, y_test, class_weights):
+    print("\n=== СРАВНЕНИЕ МОДЕЛЕЙ ===")
 
     models = {
-
-        "LogisticRegression": LogisticRegression(
-            solver="saga",
-            max_iter=200,
-            class_weight="balanced",
-            random_state=42
-        ),
-
-        "MultinomialNB": MultinomialNB(),
-
-        "LinearSVC": LinearSVC(
-            class_weight="balanced",
-            random_state=42,
-            max_iter=2000
-        ),
-
-        "RandomForest": RandomForestClassifier(
-            n_estimators=100,
-            class_weight="balanced",
-            random_state=42,
-            n_jobs=-1
-        )
+        "LogReg": LogisticRegression(max_iter=200, class_weight=class_weights, solver="saga"),
+        "NB": MultinomialNB(),
+        "SVM": LinearSVC(class_weight=class_weights),
+        "RF": RandomForestClassifier(n_estimators=100, n_jobs=-1)
     }
 
     results = []
 
     for name, model in models.items():
-
-        print(f"\n🔧 Обучение {name}...")
-
         model.fit(X_train, y_train)
-
-        y_pred = model.predict(X_test)
-
-        accuracy = accuracy_score(y_test, y_pred)
-
-        f1_macro = f1_score(
-            y_test,
-            y_pred,
-            average="macro"
-        )
-
-        f1_weighted = f1_score(
-            y_test,
-            y_pred,
-            average="weighted"
-        )
-
-        results.append({
-
-            "Model": name,
-            "Accuracy": accuracy,
-            "F1-Score (macro)": f1_macro,
-            "F1-Score (weighted)": f1_weighted
-        })
-
-        print(f"  Accuracy: {accuracy:.4f}")
-        print(f"  F1-Score (macro): {f1_macro:.4f}")
-        print(f"  F1-Score (weighted): {f1_weighted:.4f}")
-
-    print("\n" + "=" * 70)
-    print("ИТОГОВАЯ ТАБЛИЦА СРАВНЕНИЯ")
-    print("=" * 70)
-
-    df_results = pd.DataFrame(results)
-
-    print(df_results.to_string(index=False))
-
-    best_model_name = df_results.loc[
-        df_results["F1-Score (macro)"].idxmax(),
-        "Model"
-    ]
-
-    print(f"\n🏆 Лучшая модель: {best_model_name}")
-
-    return models[best_model_name], best_model_name
+        pred = model.predict(X_test)
 
 
-def train_final_model(X, y):
+        f1 = f1_score(y_test, pred, average="macro")
 
-    print("\n" + "=" * 70)
-    print("ОБУЧЕНИЕ ФИНАЛЬНОЙ МОДЕЛИ")
-    print("=" * 70)
 
-    print("\n📊 Создание TF-IDF признаков...")
+        results.append((name, f1))
+        print(f"{name}: F1={f1:.4f}")
 
-    # WORD n-grams
+    best = max(results, key=lambda x: x[1])[0]
+    print(f"\n🏆 Лучшая модель: {best}")
 
-    word_vectorizer = TfidfVectorizer(
+    return best
 
-        max_features=10000,
-        ngram_range=(1, 3),
-        min_df=2,
-        max_df=0.8,
-        sublinear_tf=True
+
+# =========================
+# RANDOM SEARCH (LR)
+# =========================
+
+def run_grid_search(X_train, y_train, class_weights):
+
+    pipeline = Pipeline([
+        ("features", build_feature_union()),
+        ("clf", LogisticRegression(
+            solver="saga",
+            max_iter=300,
+            class_weight=class_weights,
+            random_state=42
+        ))
+    ])
+
+    param_grid = {
+        # WORD TF-IDF
+        "features__word__max_features": [5000, 10000],
+        "features__word__ngram_range": [(1, 2), (1, 3)],
+        "features__word__min_df": [1, 2],
+
+        # CHAR TF-IDF
+        "features__char__ngram_range": [(3, 5), (3, 6)],
+
+        # Logistic Regression
+        "clf__C": [0.5, 1.0, 2.0]
+    }
+
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    grid = RandomizedSearchCV(
+        pipeline,
+        param_distributions=param_grid,
+        n_iter=20,
+        cv=skf,
+        scoring="f1_macro",
+        n_jobs=-1,
+        verbose=2,
+        random_state=42
     )
 
-    X_word = word_vectorizer.fit_transform(X)
+    grid.fit(X_train, y_train)
 
-    # CHAR n-grams
+    print("\nЛучшие параметры:")
+    print(grid.best_params_)
 
-    char_vectorizer = TfidfVectorizer(
+    print(f"Лучший CV F1: {grid.best_score_:.4f}")
 
-        analyzer="char_wb",
-        ngram_range=(3, 5),
-        max_features=5000
-    )
+    return grid.best_estimator_
 
-    X_char = char_vectorizer.fit_transform(X)
 
-    # объединение признаков
+# =========================
+# TRAIN
+# =========================
 
-    X_vectorized = hstack([X_word, X_char])
-
-    print(
-        f"✅ Размерность матрицы признаков: "
-        f"{X_vectorized.shape}"
-    )
-
-    # train / test
+def train_final_model(X, y, class_weights):
 
     X_train, X_test, y_train, y_test = train_test_split(
-
-        X_vectorized,
-        y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y
+        X, y, test_size=0.2, stratify=y, random_state=42
     )
 
-    best_model, best_model_name = compare_models(
+    print("\nПримеры:")
+    for i in range(5):
+        print(X_train[i])
 
-        X_train,
-        X_test,
-        y_train,
-        y_test
+    # базовая векторизация для сравнения
+    features = build_feature_union()
+    X_train_vec = features.fit_transform(X_train)
+    X_test_vec = features.transform(X_test)
+
+    best_name = compare_models(X_train_vec, X_test_vec, y_train, y_test, class_weights)
+
+    print("\n🔍 Запуск GridSearch для LogisticRegression...")
+
+    best_model = run_grid_search(X_train, y_train, class_weights)
+
+    print("\n📊 Оценка на test:")
+
+    pred = best_model.predict(X_test)
+
+    print(classification_report(y_test, pred))
+    labels = ["negative", "neutral", "positive"]
+
+    cm = confusion_matrix(
+        y_test,
+        pred,
+        labels=labels
     )
 
-    print(f"\n📋 Детальный отчёт для {best_model_name}:")
+    print(pd.DataFrame(
+        cm,
+        index=[f"TRUE_{x}" for x in labels],
+        columns=[f"PRED_{x}" for x in labels]
+    ))
 
-    y_pred = best_model.predict(X_test)
+    analyzer = analyze_model_errors(best_model, X_test, y_test, pred)
 
-    print(classification_report(y_test, y_pred))
+    print("\n💾 Сохранение pipeline и компонентов...")
+    
+    # Сохраняем полный pipeline
+    joblib.dump(best_model, "models/final_pipeline.pkl")
+    
+    # Распаковываем и сохраняем отдельные компоненты для analysis.py
+    feature_union = best_model.named_steps["features"]
+    word_vectorizer = feature_union.transformer_list[0][1]
+    char_vectorizer = feature_union.transformer_list[1][1]
+    classifier = best_model.named_steps["clf"]
+    
+    joblib.dump(word_vectorizer, "models/word_vectorizer.pkl")
+    joblib.dump(char_vectorizer, "models/char_vectorizer.pkl")
+    joblib.dump(classifier, "models/classifier.pkl")
+    
+    print("✅ Сохранены: final_pipeline.pkl, word_vectorizer.pkl, char_vectorizer.pkl, classifier.pkl")
 
-    print("\n📊 Confusion Matrix:")
+    return best_model
 
-    cm = confusion_matrix(y_test, y_pred)
 
-    print(cm)
-
-    print("\n🔄 Кросс-валидация (5-fold)...")
-
-    cv_scores = cross_val_score(
-
-        best_model,
-        X_vectorized,
-        y,
-        cv=5,
-        scoring="f1_macro"
-    )
-
-    print(f"F1 по фолдам: {cv_scores}")
-
-    print(
-        f"Средний F1: "
-        f"{cv_scores.mean():.4f} "
-        f"(+/- {cv_scores.std() * 2:.4f})"
-    )
-
-    print("\n🔧 Переобучение на всех данных...")
-
-    final_model = best_model
-
-    final_model.fit(X_vectorized, y)
-
-    print("\n💾 Сохранение моделей...")
-
-    joblib.dump(
-        word_vectorizer,
-        "models/word_vectorizer.pkl"
-    )
-
-    joblib.dump(
-        char_vectorizer,
-        "models/char_vectorizer.pkl"
-    )
-
-    joblib.dump(
-        final_model,
-        "models/classifier.pkl"
-    )
-
-    print("✅ Модели сохранены")
-
-    if hasattr(final_model, "coef_"):
-
-        print("\n🔍 Топ признаков")
-
-        word_features = (
-            word_vectorizer
-            .get_feature_names_out()
-        )
-
-        char_features = (
-            char_vectorizer
-            .get_feature_names_out()
-        )
-
-        feature_names = np.concatenate(
-            [word_features, char_features]
-        )
-
-        for idx, class_label in enumerate(
-            final_model.classes_
-        ):
-
-            print(f"\nКласс: {class_label}")
-
-            coefs = final_model.coef_[idx]
-
-            top_indices = np.argsort(
-                coefs
-            )[-10:][::-1]
-
-            for i in top_indices:
-
-                print(
-                    f"{feature_names[i]}: "
-                    f"{coefs[i]:.4f}"
-                )
-
-    return word_vectorizer, char_vectorizer, final_model
-
+# =========================
+# MAIN
+# =========================
 
 if __name__ == "__main__":
 
-    print(
-        "🚀 ОБУЧЕНИЕ МОДЕЛИ "
-        "КЛАССИФИКАЦИИ ТОНАЛЬНОСТИ"
-    )
-
-    print("=" * 70)
-
     df = load_training_data()
+    class_weights = load_class_weights()
 
-    print("\n🔧 Препроцессинг текстов...")
+    print("\n🔧 Препроцессинг...")
+    processed = preprocess_corpus(df["text"].tolist())
 
-    X = preprocess_corpus(
-        df["text"].tolist()
-    )
+    X, y = [], []
 
-    y = df["sentiment"].tolist()
+    for text, label in zip(processed, df["sentiment"]):
+        if text.strip():
+            X.append(text)
+            y.append(label)
 
-    word_vectorizer, char_vectorizer, model = \
-        train_final_model(X, y)
+    model = train_final_model(X, y, class_weights)
 
-    print("\n" + "=" * 70)
-    print("ТЕСТИРОВАНИЕ НА ПРИМЕРАХ")
-    print("=" * 70)
+    print("\n🧪 Тест:")
 
-    test_examples = [
-
-        "Отличный товар! Очень доволен покупкой.",
-        "Ужасное качество, не рекомендую!",
-        "Нормально, ничего особенного.",
-        "Не плохо, но могло быть лучше",
-        "Цена высокая, но качество супер!"
+    examples = [
+        "Отличный товар",
+        "Ужасное качество",
+        "Нормально"
     ]
 
-    for text in test_examples:
+    for text in examples:
+        p = preprocess_text(text)
+        print(text, "->", model.predict([p])[0])
 
-        processed = preprocess_text(text)
-
-        X_word = word_vectorizer.transform(
-            [processed]
-        )
-
-        X_char = char_vectorizer.transform(
-            [processed]
-        )
-
-        vectorized = hstack(
-            [X_word, X_char]
-        )
-
-        prediction = model.predict(
-            vectorized
-        )[0]
-
-        proba = model.predict_proba(
-            vectorized
-        )[0]
-
-        print(f"\nТекст: {text}")
-        print(f"Предсказание: {prediction}")
-
-        print(
-            "Вероятности:",
-            dict(
-                zip(
-                    model.classes_,
-                    proba
-                )
-            )
-        )
-
-    print("\n✅ Обучение завершено!")
+    print("\n✅ Готово")
