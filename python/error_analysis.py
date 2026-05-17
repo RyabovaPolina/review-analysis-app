@@ -134,8 +134,8 @@ class ErrorAnalyzer:
         print("=" * 80)
 
         clf = self.model.named_steps["clf"]
+        classes = list(clf.classes_)
 
-        classes = list(self.model.classes_)
         pred_idx = classes.index(pred_class)
 
         # ==========================================================
@@ -230,6 +230,10 @@ class ErrorAnalyzer:
         # Правильные vs неправильные
         correct_texts = [self.X_test[i] for i in range(len(self.X_test)) if not self.errors_mask[i]]
         error_texts = self.X_errors
+
+        if len(error_texts) == 0:
+            print("✅ Ошибок нет")
+            return
         
         # 1. ДЛИНА ТЕКСТА
         print("\n1️⃣  ДЛИНА ТЕКСТА (количество слов)")
@@ -275,7 +279,10 @@ class ErrorAnalyzer:
         error_special = sum(1 for t in error_texts if re.search(special_pattern, t))
         
         print(f"   ✅ Правильно классифицированные: {correct_special/len(correct_texts)*100:.1f}% со спец.символами")
-        print(f"   ❌ Неправильно классифицированные: {error_special/len(error_texts)*100:.1f}% со спец.символами")
+        if len(error_texts) == 0:
+            print("✅ Ошибок нет")
+            return
+        else: print(f"   ❌ Неправильно классифицированные: {error_special/len(error_texts)*100:.1f}% со спец.символами")
         
         # 4. ГЛАСНЫЕ БУКВЫ (ОООЧЕНЬ)
         print("\n4️⃣  ДУБЛИРОВАНИЕ ГЛАСНЫХ (ОООЧЕНЬ, УЖАССССНО)")
@@ -285,7 +292,10 @@ class ErrorAnalyzer:
         error_vowel_dup = sum(1 for t in error_texts if re.search(vowel_dup_pattern, t))
         
         print(f"   ✅ Правильно классифицированные: {correct_vowel_dup/len(correct_texts)*100:.1f}% с дублями")
-        print(f"   ❌ Неправильно классифицированные: {error_vowel_dup/len(error_texts)*100:.1f}% с дублями")
+        if len(error_texts) == 0:
+            print("✅ Ошибок нет")
+            return
+        else: print(f"   ❌ Неправильно классифицированные: {error_vowel_dup/len(error_texts)*100:.1f}% с дублями")
         
         # 5. СЛЕНГ
         print("\n5️⃣  МАГАЗИННЫЙ СЛЕНГ (пушка, шляпа, барахло...)")
@@ -296,7 +306,11 @@ class ErrorAnalyzer:
         error_slang = sum(1 for t in error_texts if any(word in t.lower() for word in slang_words))
         
         print(f"   ✅ Правильно классифицированные: {correct_slang/len(correct_texts)*100:.1f}% со сленгом")
-        print(f"   ❌ Неправильно классифицированные: {error_slang/len(error_texts)*100:.1f}% со сленгом")
+
+        if len(error_texts) == 0:
+            print("✅ Ошибок нет")
+            return
+        else: print(f"   ❌ Неправильно классифицированные: {error_slang/len(error_texts)*100:.1f}% со сленгом")
         
         print("\n" + "=" * 80)
     
@@ -541,7 +555,7 @@ class ErrorAnalyzer:
                 (self.y_pred == class_name)
             )
 
-            acc = correct_class / total_class
+            acc = correct_class / total_class if total_class > 0 else 0
 
             print(
                 f"   {class_name}: "
@@ -605,6 +619,93 @@ def analyze_model_errors(model, X_test, y_test, y_pred):
 # ═════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
+
+    import joblib
+
+    from sklearn.model_selection import train_test_split
+
+    from train_model import (
+        load_training_data,
+        preprocess_corpus
+    )
+
+    print("=" * 80)
+    print("🔎 ЗАГРУЗКА МОДЕЛИ")
+    print("=" * 80)
+
+    # ==========================================================
+    # Загрузка модели
+    # ==========================================================
+
+    model = joblib.load("models/final_pipeline.pkl")
+
+    print("✅ Модель загружена")
+
+    # ==========================================================
+    # Загрузка данных
+    # ==========================================================
+
+    print("\n📥 Загрузка датасета...")
+
+    df = load_training_data()
+
+    # ==========================================================
+    # Препроцессинг
+    # ==========================================================
+
+    print("\n🔧 Препроцессинг текстов...")
+
+    processed = preprocess_corpus(
+        df["text"].tolist(),
+        n_jobs=2
+    )
+
+    X, y = [], []
+
+    for text, label in zip(processed, df["sentiment"]):
+
+        if text.strip():
+
+            X.append(text)
+            y.append(label)
+
+    # ==========================================================
+    # Воссоздаём test split
+    # ВАЖНО: random_state должен совпадать с train_model.py
+    # ==========================================================
+
+    _, X_test, _, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        stratify=y,
+        random_state=42
+    )
+
+    print(f"\n📊 Test examples: {len(X_test)}")
+
+    # ==========================================================
+    # Predict
+    # ==========================================================
+
+    print("\n🤖 Предсказания модели...")
+
+    y_pred = model.predict(X_test)
+
+    # ==========================================================
+    # Анализ ошибок
+    # ==========================================================
+
+    print("\n🔍 Запуск анализа ошибок...")
+
+    analyzer = ErrorAnalyzer(
+        model,
+        X_test,
+        y_test,
+        y_pred
+    )
+
+    analyzer.generate_full_report()
     """
     Демонстрация (требует обученную модель и тестовые данные):
     
