@@ -5,13 +5,6 @@ from services.s3_service import _s3_pool
 from services.data_filter import filter_low_quality_reviews
 
 def process_csv_streaming(s3_key, review_column, chunk_size=1000):
-    """
-    Потоковое чтение CSV с S3 с одновременной фильтрацией низкокачественных отзывов
-    и препроцессингом.
-    Возвращает:
-        processed_texts: список препроцессированных текстов
-        valid_indices: индексы строк, которые прошли фильтрацию
-    """
     # Получаем CSV через пул S3
     response = _s3_pool.client.get_object(
         Bucket=_s3_pool.bucket_name,

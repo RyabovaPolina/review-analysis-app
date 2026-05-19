@@ -1,70 +1,77 @@
-"""
-⚡ ОПТИМИЗИРОВАННЫЙ ПРЕПРОЦЕССИНГ v4
-- Быстрее в 2-3 раза
-- Меньше нагрузка на памяти
-- Те же результаты обработки
-
-ИЗМЕНЕНИЯ:
-✅ Переведён на threading вместо loky (много меньше памяти)
-✅ Оптимизированы regex операции
-✅ Увеличен batch_size для меньшего оверхеда
-✅ Кэширование скомпилированных regex
-"""
-
 import re
 import sys
 from joblib import Parallel, delayed
 import logging
+from pymorphy3 import MorphAnalyzer
 
 # ═════════════════════════════════════════════════════════════════════
-# КЭШИРОВАНИЕ REGEX (ОПТИМИЗАЦИЯ)
+# КЭШИРОВАНИЕ REGEX
 # ═════════════════════════════════════════════════════════════════════
 
 # Предкомпилированные regex - НАМНОГО быстрее
-REGEX_VOWELS = re.compile(r'([аеёиоуыэ])\1{2,}')
-REGEX_CONSONANTS = re.compile(r'([кпрсжждтбфхцчщнмлйвгз])\1{2,}')
+REGEX_REPEAT_CHARS = re.compile(r'([а-яёa-z])\1{2,}', re.IGNORECASE)
 REGEX_URLS = re.compile(r"http\S+|www\.\S+")
 REGEX_HTML = re.compile(r"<.*?>")
 REGEX_EMAIL = re.compile(r"\S+@\S+")
 REGEX_SPECIAL = re.compile(r"[^a-zа-яё0-9\s_]")
 REGEX_SPACES = re.compile(r"\s+")
+_LEMMA_CACHE = {}
 
+
+# ═════════════════════════════════════════════════════════════════════
+# ЛЕММАТИЗАЦИЯ
+# ═════════════════════════════════════════════════════════════════════
+MORPH = MorphAnalyzer()
+
+def lemmatize_tokens(tokens):
+    """
+    Лемматизация токенов с кэшированием
+    """
+
+    result = []
+
+    for token in tokens:
+
+        # Не лемматизируем доменные признаки
+        if "_" in token:
+            result.append(token)
+            continue
+
+        # Кэш
+        if token in _LEMMA_CACHE:
+            result.append(_LEMMA_CACHE[token])
+            continue
+
+        try:
+            lemma = MORPH.parse(token)[0].normal_form
+        except Exception:
+            lemma = token
+
+        _LEMMA_CACHE[token] = lemma
+        result.append(lemma)
+
+    return result
 
 # ═════════════════════════════════════════════════════════════════════
 # ЭТАП 1: НОРМАЛИЗАЦИЯ ДУБЛЕЙ (ПЕРЕД ОЧИСТКОЙ)
 # ═════════════════════════════════════════════════════════════════════
 
 def normalize_repeated_chars(text: str) -> str:
-    """
-    Нормализует дублированные гласные и согласные
-    
-    ооочень → очень
-    кккррассиво → красиво
-    
-    ОПТИМИЗАЦИЯ: используются предкомпилированные regex
-    """
     if not isinstance(text, str):
         return ""
-    
-    text = text.lower()
-    
-    # Используем предкомпилированные regex вместо re.sub
-    text = REGEX_VOWELS.sub(r'\1', text)
-    text = REGEX_CONSONANTS.sub(r'\1', text)
-    
-    return text
 
+    text = text.lower()
+
+    # Схлопываем 3+ повторов в 1 символ
+    text = REGEX_REPEAT_CHARS.sub(r'\1', text)
+
+    return text
 
 # ═════════════════════════════════════════════════════════════════════
 # ЭТАП 2: БАЗОВАЯ ОЧИСТКА
 # ═════════════════════════════════════════════════════════════════════
 
 def clean_text(text: str) -> str:
-    """
-    Очищает текст от HTML, ссылок, email, специальных символов
-    
-    ОПТИМИЗАЦИЯ: используются предкомпилированные regex
-    """
     if not isinstance(text, str):
         return ""
 
@@ -94,7 +101,7 @@ def tokenize(text: str):
 
 
 # ═════════════════════════════════════════════════════════════════════
-# ЭТАП 4: ДОМЕННЫЙ СЛОВАРЬ (для интернет-магазинов)
+# ЭТАП 4: ДОМЕННЫЙ СЛОВАРЬ
 # ═════════════════════════════════════════════════════════════════════
 
 # Позитивный сленг → стандартные признаки
@@ -188,8 +195,6 @@ def _get_phrase_regex(phrase):
 def apply_domain_phrases(text: str) -> str:
     """
     Заменяет многословные доменные выражения на признаки
-    
-    ОПТИМИЗАЦИЯ: кэширование скомпилированных regex
     """
     # Сортируем по длине (длинные первыми) чтобы избежать конфликтов
     sorted_phrases = sorted(DOMAIN_PHRASES.keys(), key=len, reverse=True)
@@ -281,6 +286,31 @@ def smart_apply_negation(tokens, window=2):
 
     return result
 
+def merge_complex_negations(tokens):
+    """
+    Обработка сложных отрицаний:
+    не очень дорого -> не_очень_дорого
+    """
+
+    result = []
+    i = 0
+
+    while i < len(tokens):
+
+        # не очень X
+        if (
+            i + 2 < len(tokens)
+            and tokens[i] == "не"
+            and tokens[i + 1] == "очень"
+        ):
+            result.append(f"не_очень_{tokens[i + 2]}")
+            i += 3
+            continue
+
+        result.append(tokens[i])
+        i += 1
+
+    return result
 
 def merge_two_word_negations(tokens):
     """Обработка 2-словных отрицаний (не очень, совсем не)"""
@@ -311,19 +341,17 @@ def merge_two_word_negations(tokens):
 
 def combine_negations(tokens):
     """Комбинированная обработка отрицаний"""
+    tokens = merge_complex_negations(tokens)
     tokens = merge_two_word_negations(tokens)
     tokens = smart_apply_negation(tokens, window=2)
     return tokens
 
 
 # ═════════════════════════════════════════════════════════════════════
-# ОСНОВНОЙ ПРЕПРОЦЕССИНГ (v4 ОПТИМИЗИРОВАННЫЙ)
+# ОСНОВНОЙ ПРЕПРОЦЕССИНГ
 # ═════════════════════════════════════════════════════════════════════
 
 def preprocess_text(text, use_negations=True, use_domain_slang=True, normalize_repeated=True):
-    """
-    Полный препроцессинг с правильным порядком обработки
-    """
     # ШАГ 1: Нормализация дублей
     if normalize_repeated:
         text = normalize_repeated_chars(text)
@@ -345,6 +373,9 @@ def preprocess_text(text, use_negations=True, use_domain_slang=True, normalize_r
     if use_domain_slang:
         tokens = apply_domain_slang(tokens)
 
+    # ШАГ 6: Лемматизация
+    tokens = lemmatize_tokens(tokens)
+
     # ШАГ 6: Обрабатываем отрицания
     if use_negations:
         tokens = combine_negations(tokens)
@@ -357,7 +388,7 @@ def preprocess_text(text, use_negations=True, use_domain_slang=True, normalize_r
 
 
 # ═════════════════════════════════════════════════════════════════════
-# ОБРАБОТКА КОРПУСА (ОПТИМИЗИРОВАННАЯ)
+# ОБРАБОТКА КОРПУСА 
 # ═════════════════════════════════════════════════════════════════════
 
 def chunkify(lst, chunk_size):
@@ -369,20 +400,11 @@ def chunkify(lst, chunk_size):
 def preprocess_corpus(
     texts,
     verbose=True,
-    n_jobs=2,  # было 4 - меньше процессов
+    n_jobs=2, 
     use_domain_slang=True,
     normalize_repeated=True,
-    batch_size=2000  # было 1000 - больше батч для меньшего оверхеда
+    batch_size=2000
 ):
-    """
-    Батч-параллельный preprocessing (ОПТИМИЗИРОВАННЫЙ)
-    
-    ОПТИМИЗАЦИЯ:
-    - Переведён на threading (меньше памяти чем loky)
-    - Больший batch_size (меньше оверхед)
-    - Ограниченные n_jobs
-    """
-
     total = len(texts)
 
     # Разбиваем на батчи
@@ -419,10 +441,9 @@ def preprocess_corpus(
         return results
 
     # Параллельная обработка БАТЧЕЙ
-    # ВАЖНО: backend='threading' вместо 'loky' - НАМНОГО меньше памяти!
     processed_batches = Parallel(
         n_jobs=n_jobs,
-        backend="threading"  # ← КЛЮЧЕВАЯ ОПТИМИЗАЦИЯ
+        backend="threading" 
     )(
         delayed(process_batch)(i, batch)
         for i, batch in enumerate(batches)
@@ -453,7 +474,9 @@ if __name__ == "__main__":
         ("Шляпа полная. Век жди доставку.", "Негатив + фраза"),
         ("Кот наплакал товара за копейки", "Фразы + сленг"),
         
-        ("Не очень пушка, не дорого", "Отрицание + сленг"),
+        ("Не очень дорого и доставка быстрая", "Цена + доставка"),
+        ("Не очень хороший товар, но не дорого", "Отрицание + цена"),
+        ("Товар не очень хороший, зато не дорого", "Сложное отрицание"),
         ("Совсем не шляпа! Молния доставка!", "2-словное отрицание"),
         
         ("ООООЧЕНЬ КЛАСНАЯ ПУШКА!!! Кот наплакал цены. Доставка молния!!!", "Все сразу"),

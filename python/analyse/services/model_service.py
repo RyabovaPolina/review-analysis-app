@@ -5,10 +5,6 @@ import threading
 import pickle
 import hashlib
 
-"""
-✅ Потокобезопасный кэш pipeline и TF-IDF матриц
-"""
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 MODELS_DIR = os.path.join(BASE_DIR, "models")

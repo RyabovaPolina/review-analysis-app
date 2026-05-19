@@ -97,6 +97,67 @@ def main():
         .to_string(index=False)
     )
 
+        # -------------------------
+    # СТАТИСТИКА ПО КАТЕГОРИЯМ
+    # -------------------------
+
+    print("\n" + "=" * 70)
+    print("СТАТИСТИКА КАТЕГОРИЙ")
+    print("=" * 70)
+
+    # возможные названия столбца категории
+    possible_category_columns = [
+        "rubrics",
+        "categories",
+        "business_category",
+        "place_category",
+        "type"
+    ]
+
+    category_column = None
+
+    for col in possible_category_columns:
+        if col in df.columns:
+            category_column = col
+            break
+
+    if category_column is None:
+
+        print("\nСтолбец с категориями не найден.")
+        print("Проверьте названия колонок в датасете.")
+
+    else:
+
+        print(f"\nИспользуется столбец: {category_column}")
+
+        # удалить пустые значения
+        category_df = df[df[category_column].notna()]
+
+        # подсчет количества отзывов
+        category_counts = (
+            category_df[category_column]
+            .value_counts()
+        )
+
+        category_table = pd.DataFrame({
+
+            "Категория": category_counts.index,
+
+            "Количество отзывов": category_counts.values
+
+        })
+
+        print("\nКоличество категорий:",
+              len(category_table))
+
+        print("\nТОП-20 категорий:\n")
+
+        print(
+            category_table
+            .head(20)
+            .to_string(index=False)
+        )
+
     # -------------------------
     # SENTIMENT
     # -------------------------

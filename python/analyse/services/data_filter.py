@@ -3,13 +3,6 @@ import re
 import pandas as pd
 
 def filter_low_quality_reviews(df: pd.DataFrame, text_column: str, min_length: int = 10) -> pd.DataFrame:
-    """
-    Удаляет низкокачественные отзывы перед анализом:
-      - Пустые и слишком короткие
-      - Дубликаты
-      - Тексты без букв
-      - Спам с повторяющимися символами
-    """
     original_count = len(df)
 
     # 1️⃣ Пустые и короткие

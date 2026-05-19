@@ -91,17 +91,7 @@ def is_valid_word(token: str, min_len: int = 3) -> bool:
     return True
 
 def is_meaningful_ngram(text: str, min_words: int = 2) -> bool:
-    """
-    Проверка, является ли n-грамма значимой.
-    
-    Для биграмм и триграмм отфильтровываем пустые комбинации:
-    - "что то" → шум
-    - "как будто" → служебное
-    - "из за" → служебное (из-за)
-    - "так как" → служебное
-    - "то что" → служебное
-    """
-    
+
     # Список бесполезных биграмм (очень частые, служебные)
     USELESS_BIGRAMS = {
         "что то", "как будто", "из за", "так как", "то что",
@@ -131,7 +121,6 @@ def is_meaningful_ngram(text: str, min_words: int = 2) -> bool:
 
 
 class VectorizerCache:
-    """Кэширует трансформированные матрицы TF-IDF"""
 
     def __init__(self, cache_dir="/tmp/vectorizer_cache"):
         self.cache_dir = cache_dir
@@ -161,12 +150,8 @@ def extract_keywords_v2(
     top_n=15,
     strategy="combined",
     verbose=False,
-    cache=None  # <--- Добавляем возможность передавать кэш
+    cache=None 
 ):
-    """
-    Оптимизированное извлечение ключевых слов с ленивыми вычислениями топ-N
-    и кэшированием TF-IDF матриц.
-    """
     group = texts_by_sentiment.get(sentiment_type, [])
     other = [t for k, v in texts_by_sentiment.items() if k != sentiment_type for t in v]
 

@@ -1,10 +1,3 @@
-"""
-✅ INTEGRATED ASPECT ANALYSIS WITH BUSINESS INSIGHTS
-Полный анализ аспектов с рекомендациями для владельцев бизнеса
-
-ИСПРАВЛЕНИЕ: Добавлена поддержка разных имён колонок с текстами
-"""
-
 from ml.aspect_extractor import AspectExtractor, aggregate_aspects_by_sentiment
 from collections import defaultdict
 import json
@@ -13,9 +6,6 @@ import numpy as np
 
 
 class BusinessInsightAnalyzer:
-    """
-    Анализирует отзывы и выводит рекомендации для владельцев бизнеса.
-    """
     
     def __init__(self):
         self.aspect_extractor = AspectExtractor()
@@ -23,11 +13,9 @@ class BusinessInsightAnalyzer:
     def analyze_reviews_by_aspects(
         self,
         df_with_sentiment,   # DataFrame с колонкой 'sentiment' и другими метаданными
-        processed_texts      # Список уже препроцессированных текстов
+        processed_texts,      # Список уже препроцессированных текстов
+        keywords=None
     ) -> Dict:
-        """
-        Полный анализ отзывов по аспектам, используя отдельный список обработанных текстов.
-        """
         
         if len(processed_texts) != len(df_with_sentiment):
             raise ValueError(
@@ -256,11 +244,7 @@ class BusinessInsightAnalyzer:
 # ФОРМАТИРОВАНИЕ ДЛЯ ВЫВОДА
 # ═════════════════════════════════════════════════════════════════════
 
-def format_analysis_for_display(analysis: Dict) -> str:
-    """
-    Форматирует анализ для красивого вывода.
-    """
-    
+def format_analysis_for_display(analysis: Dict) -> str:    
     output = []
     
     # ─────────────────────────────────────────────────────────

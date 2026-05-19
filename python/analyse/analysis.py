@@ -1,10 +1,3 @@
-"""
-✅ УЛУЧШЕННЫЙ ANALYSIS.PY С ASPECT-BASED SENTIMENT ANALYSIS
-Интеграция аспект-ориентированного анализа в существующий pipeline
-
-ИСПРАВЛЕНИЕ: Логи в stderr, JSON только в stdout в конце
-"""
-
 import sys
 import json
 import os
@@ -51,13 +44,6 @@ if sys.stderr.encoding != "utf-8":
 BATCH_SIZE = 256
 
 def predict_batch(texts, model, batch_size=BATCH_SIZE):
-    """
-    Батч-обработка отзывов для:
-    - уменьшения RAM
-    - ускорения predict
-    - предотвращения memory spikes
-    """
-
     sentiments = []
     probabilities = []
 
@@ -103,7 +89,7 @@ def predict_batch(texts, model, batch_size=BATCH_SIZE):
 # ═════════════════════════════════════════════════════════════════════
 
 def log(message):
-    """Логирование в stderr (для отладки, не попадает в JSON)"""
+
     print(message, file=sys.stderr)
 
 
@@ -115,22 +101,11 @@ def analyze_reviews_with_aspects(
     s3_key,
     review_column
 ):
-    """
-    Полный анализ отзывов включая:
-    1. Определение тональности (positive/negative/neutral)
-    2. Извлечение аспектов (еда, персонал, цена, атмосфера, и т.д.)
-    3. Анализ аспектов по категориям тональности
-    4. Генерация рекомендаций для владельцев
-    """
     
     log("📥 Загружаю данные из S3...")
     df = download_csv(s3_key)
-
-    #log("🧹 Фильтрую низкокачественные отзывы...")
-    #df = filter_low_quality_reviews(df, review_column)
     
     log("📝 Обрабатываю отзывы потоково...")
-    # После фильтрации низкокачественных отзывов
 
     # Потоковый препроцессинг только для df
     processed = preprocess_corpus(df[review_column].fillna("").astype(str).tolist())
@@ -330,8 +305,7 @@ def analyze_reviews_with_aspects(
         # Путь к сохранённому файлу
         "result_key": result_key,
     }
-    
-    # ✅ ВАЖНО: Выводим красиво в stderr (для отладки)
+
     log("\n" + "=" * 120)
     log(format_analysis_for_display(full_analysis))
     log("=" * 120)
@@ -353,7 +327,6 @@ if __name__ == "__main__":
         review_column
     )
     
-    # ✅ КРИТИЧНО: ТОЛЬКО JSON в stdout, БЕЗ других символов!
     print(
         json.dumps(
             result,

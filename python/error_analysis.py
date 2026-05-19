@@ -1,18 +1,9 @@
-"""
-ERROR ANALYSIS: Подробный анализ false positives и false negatives
-- Какие тексты классифицируются неправильно?
-- Есть ли паттерны в ошибках?
-- Какие признаки вызывают конфликты?
-- Визуализация проблемных примеров
-"""
-
-import pandas as pd
 import numpy as np
-from typing import List, Tuple, Dict
-from collections import Counter
+from typing import List
 import re
-from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+from sklearn.pipeline import Pipeline
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -20,17 +11,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # ═════════════════════════════════════════════════════════════════════
 
 class ErrorAnalyzer:
-    """
-    Анализ ошибок классификации с поиском паттернов и проблемных признаков
-    
-    Использование:
-        analyzer = ErrorAnalyzer(model, X_test, y_test, y_pred)
-        analyzer.print_summary()
-        analyzer.analyze_false_positives()
-        analyzer.analyze_false_negatives()
-        analyzer.find_patterns()
-        analyzer.visualize_errors()
-    """
     
     def __init__(self, model: Pipeline, X_test: List[str], y_test: np.ndarray, y_pred: np.ndarray):
         """
@@ -41,7 +21,7 @@ class ErrorAnalyzer:
             y_pred: предсказанные метки
         """
         self.model = model
-        # 🔥 ВАЖНО: приведение к numpy
+        # ВАЖНО: приведение к numpy
         self.X_test = np.array(X_test)
         self.y_test = np.array(y_test)
         self.y_pred = np.array(y_pred)
@@ -68,6 +48,7 @@ class ErrorAnalyzer:
                 )[0]
 
                 self.error_pairs[(true_class, pred_class)] = indices    
+    
     # ═════════════════════════════════════════════════════════════════
     # 1. ОБЩАЯ СТАТИСТИКА
     # ═════════════════════════════════════════════════════════════════
@@ -106,14 +87,6 @@ class ErrorAnalyzer:
         pred_class,
         top_n=5
     ):
-        """
-        Анализ ошибок между двумя классами
-
-        Например:
-            negative -> positive
-            neutral -> positive
-            positive -> neutral
-        """
 
         indices = self.error_pairs.get(
             (true_class, pred_class),
@@ -212,12 +185,9 @@ class ErrorAnalyzer:
             print(f"PRED: {pred_class}")
 
         print("\n" + "=" * 80)
+    
     # ═════════════════════════════════════════════════════════════════
-    # 2. АНАЛИЗ FALSE POSITIVES
-    # ═════════════════════════════════════════════════════════════════
-     
-    # ═════════════════════════════════════════════════════════════════
-    # 4. ПОИСК ПАТТЕРНОВ В ОШИБКАХ
+    # 2. ПОИСК ПАТТЕРНОВ В ОШИБКАХ
     # ═════════════════════════════════════════════════════════════════
     
     def find_patterns(self):
@@ -264,10 +234,7 @@ class ErrorAnalyzer:
         print(f"   ✅ Правильно классифицированные: {correct_negations/len(correct_texts)*100:.1f}% с отрицаниями")
         print(f"   ❌ Неправильно классифицированные: {error_negations/len(error_texts)*100:.1f}% с отрицаниями")
         
-        if len(error_texts) == 0:
-            print("✅ Ошибок нет")
-            return
-        elif error_negations/len(error_texts) > correct_negations/len(correct_texts) * 1.5:
+        if error_negations/len(error_texts) > correct_negations/len(correct_texts) * 1.5:
             print(f"\n   ⚠️  ПАТТЕРН: Много ошибок ТАМ ГДЕ ЕСТЬ ОТРИЦАНИЯ!")
             print(f"       Возможно: обработка отрицаний не совершенна")
         
@@ -279,169 +246,109 @@ class ErrorAnalyzer:
         error_special = sum(1 for t in error_texts if re.search(special_pattern, t))
         
         print(f"   ✅ Правильно классифицированные: {correct_special/len(correct_texts)*100:.1f}% со спец.символами")
-        if len(error_texts) == 0:
-            print("✅ Ошибок нет")
-            return
-        else: print(f"   ❌ Неправильно классифицированные: {error_special/len(error_texts)*100:.1f}% со спец.символами")
+        print(f"   ❌ Неправильно классифицированные: {error_special/len(error_texts)*100:.1f}% со спец.символами")
+        
+        if error_special/len(error_texts) > correct_special/len(correct_texts) * 1.5:
+            print(f"\n   ⚠️  ПАТТЕРН: Много ошибок ГДЕ ЕСТЬ СПЕЦ.СИМВОЛЫ!")
+            print(f"       Возможно: лишние спец.символы путают модель")
         
         # 4. ГЛАСНЫЕ БУКВЫ (ОООЧЕНЬ)
         print("\n4️⃣  ДУБЛИРОВАНИЕ ГЛАСНЫХ (ОООЧЕНЬ, УЖАССССНО)")
         vowel_dup_pattern = r'([аеёиоуы])\1{2,}'
         
-        correct_vowel_dup = sum(1 for t in correct_texts if re.search(vowel_dup_pattern, t))
-        error_vowel_dup = sum(1 for t in error_texts if re.search(vowel_dup_pattern, t))
+        correct_vowel = sum(1 for t in correct_texts if re.search(vowel_dup_pattern, t))
+        error_vowel = sum(1 for t in error_texts if re.search(vowel_dup_pattern, t))
         
-        print(f"   ✅ Правильно классифицированные: {correct_vowel_dup/len(correct_texts)*100:.1f}% с дублями")
-        if len(error_texts) == 0:
-            print("✅ Ошибок нет")
-            return
-        else: print(f"   ❌ Неправильно классифицированные: {error_vowel_dup/len(error_texts)*100:.1f}% с дублями")
+        print(f"   ✅ Правильно классифицированные: {correct_vowel/len(correct_texts)*100:.1f}% с дублями гласных")
+        print(f"   ❌ Неправильно классифицированные: {error_vowel/len(error_texts)*100:.1f}% с дублями гласных")
         
-        # 5. СЛЕНГ
-        print("\n5️⃣  МАГАЗИННЫЙ СЛЕНГ (пушка, шляпа, барахло...)")
-        slang_words = {'пушка', 'бомба', 'огонь', 'шляпа', 'барахло', 'мусор', 'хлам', 
-                      'конфетка', 'копейки', 'грабёж', 'молния', 'черепаха'}
-        
-        correct_slang = sum(1 for t in correct_texts if any(word in t.lower() for word in slang_words))
-        error_slang = sum(1 for t in error_texts if any(word in t.lower() for word in slang_words))
-        
-        print(f"   ✅ Правильно классифицированные: {correct_slang/len(correct_texts)*100:.1f}% со сленгом")
+        if error_vowel/len(error_texts) > correct_vowel/len(correct_texts) * 2.0:
+            print(f"\n   ⚠️  ПАТТЕРН: Много ошибок С ДУБЛИРОВАНИЕМ ГЛАСНЫХ!")
+            print(f"       Возможно: нужна нормализация дублей")
 
-        if len(error_texts) == 0:
-            print("✅ Ошибок нет")
-            return
-        else: print(f"   ❌ Неправильно классифицированные: {error_slang/len(error_texts)*100:.1f}% со сленгом")
-        
         print("\n" + "=" * 80)
     
     # ═════════════════════════════════════════════════════════════════
-    # 5. АНАЛИЗ CONFLICTING ПРИЗНАКОВ
+    # 3. АНАЛИЗ КОНФЛИКТУЮЩИХ ПРИЗНАКОВ
     # ═════════════════════════════════════════════════════════════════
     
-    def analyze_conflicting_features(
-        self,
-        top_features=15,
-        examples_per_pair=3
-    ):
+    def analyze_conflicting_features(self, top_features=15, examples_per_pair=3):
         """
-        Анализ конфликтующих признаков
-        для каждого confusion pair.
-
-        Показывает:
-        - какие признаки толкают в TRUE класс
-        - какие признаки толкают в PREDICTED класс
-        - какие признаки реально встретились в тексте
+        Анализ важных признаков для каждой пары ошибок
         """
-
+        
         print("\n" + "=" * 80)
-        print("⚔️ CONFLICTING FEATURE ANALYSIS")
+        print("🎯 АНАЛИЗ КОНФЛИКТУЮЩИХ ПРИЗНАКОВ")
         print("=" * 80)
-
+        
         # ==========================================================
-        # Проверка classifier
+        # Получаем FeatureUnion
         # ==========================================================
 
-        clf = self.model.named_steps["clf"]
-
-        if not hasattr(clf, "coef_"):
-
-            print("⚠️ classifier has no coef_")
+        if "features" not in self.model.named_steps:
+            print("\n⚠️  FeatureUnion не найден в pipeline")
             return
-
-        # ==========================================================
-        # Получаем vectorizers
-        # ==========================================================
 
         features = self.model.named_steps["features"]
-
-        word_vectorizer = dict(
-            features.transformer_list
-        )["word"]
-
-        char_vectorizer = dict(
-            features.transformer_list
-        )["char"]
+        clf = self.model.named_steps["clf"]
 
         # ==========================================================
-        # Feature names
+        # Получаем word tfidf
         # ==========================================================
 
-        word_features = (
+        word_vectorizer = None
+
+        for name, transformer in features.transformer_list:
+
+            if (
+                isinstance(transformer, TfidfVectorizer)
+                and transformer.analyzer == "word"
+            ):
+                word_vectorizer = transformer
+                break
+
+        if word_vectorizer is None:
+            print("\n⚠️ Word TfidfVectorizer не найден")
+            return
+
+        feature_names = np.array(
             word_vectorizer.get_feature_names_out()
         )
-
-        char_features = (
-            char_vectorizer.get_feature_names_out()
-        )
-
-        feature_names = np.concatenate([
-            word_features,
-            char_features
-        ])
-
-        # ==========================================================
-        # Coefficients
-        # ==========================================================
-
-        coef = clf.coef_
-        classes = list(clf.classes_)
-
-        # Safety
-        min_len = min(
-            len(feature_names),
-            coef.shape[1]
-        )
-
-        feature_names = feature_names[:min_len]
-        coef = coef[:, :min_len]
-
-        # ==========================================================
-        # Анализируем ВСЕ confusion pairs
-        # ==========================================================
-
+        # Ограничиваем коэффициенты только word-feature частью
+        word_feature_count = len(feature_names)
+                
+        # Проверяем наличие coef_ (для линейных моделей)
+        if not hasattr(clf, "coef_"):
+            print("\n⚠️  Classifier не имеет coef_ (нужна линейная модель)")
+            return
+        
         for (true_class, pred_class), indices in self.error_pairs.items():
-
+            
             if len(indices) == 0:
                 continue
-
-            print("\n" + "=" * 80)
-            print(
-                f"⚠️ CONFLICT: "
-                f"{true_class} -> {pred_class}"
-            )
-            print("=" * 80)
-
-            # ------------------------------------------------------
+            
+            print(f"\n{'─' * 60}")
+            print(f"🔴 TRUE CLASS = {true_class}")
+            
             # Индексы классов
-            # ------------------------------------------------------
-
+            classes = list(clf.classes_)
             true_idx = classes.index(true_class)
             pred_idx = classes.index(pred_class)
-
-            true_coef = coef[true_idx]
-            pred_coef = coef[pred_idx]
-
-            # ------------------------------------------------------
-            # ТОП признаков классов
-            # ------------------------------------------------------
-
+            
+            # Коэффициенты
+            if len(clf.coef_.shape) == 1:
+                # Binary classification
+                true_coef = clf.coef_
+                pred_coef = -clf.coef_
+            else:
+                # Multiclass
+                true_coef = clf.coef_[true_idx][:word_feature_count]
+                pred_coef = clf.coef_[pred_idx][:word_feature_count]
+            
+            # Top признаки для true class
             true_top = np.argsort(true_coef)[-top_features:]
-            pred_top = np.argsort(pred_coef)[-top_features:]
-
-            true_tokens = set(
-                feature_names[idx]
-                for idx in true_top
-            )
-
-            pred_tokens = set(
-                feature_names[idx]
-                for idx in pred_top
-            )
-
-            print(f"\n🔴 TRUE CLASS = {true_class}")
-
+            
             for idx in reversed(true_top):
-
                 print(
                     f"   {feature_names[idx]} "
                     f"({true_coef[idx]:.3f})"
@@ -449,17 +356,16 @@ class ErrorAnalyzer:
 
             print(f"\n🟢 PRED CLASS = {pred_class}")
 
+            # Top признаки для pred class
+            pred_top = np.argsort(pred_coef)[-top_features:]
+            
             for idx in reversed(pred_top):
-
                 print(
                     f"   {feature_names[idx]} "
                     f"({pred_coef[idx]:.3f})"
                 )
 
-            # ------------------------------------------------------
-            # Анализируем тексты ошибок
-            # ------------------------------------------------------
-
+            # Примеры ошибок
             print("\n📄 EXAMPLES:")
 
             for i, sample_idx in enumerate(
@@ -477,15 +383,15 @@ class ErrorAnalyzer:
                 )
 
                 matched_true = [
-                    token
-                    for token in true_tokens
-                    if any(token in t for t in tokens)
+                    feature_names[idx]
+                    for idx in true_top
+                    if feature_names[idx] in tokens
                 ]
 
                 matched_pred = [
-                    token
-                    for token in pred_tokens
-                    if any(token in t for t in tokens)
+                    feature_names[idx]
+                    for idx in pred_top
+                    if feature_names[idx] in tokens
                 ]
 
                 print("\n" + "-" * 60)
@@ -495,21 +401,17 @@ class ErrorAnalyzer:
                 print(text[:300])
 
                 print("\n🔴 TRUE SIGNALS FOUND:")
-                print(
-                    matched_true[:15]
-                    if matched_true else "None"
-                )
+                print(matched_true if matched_true else "None")
 
                 print("\n🟢 PRED SIGNALS FOUND:")
-                print(
-                    matched_pred[:15]
-                    if matched_pred else "None"
-                )
+                print(matched_pred if matched_pred else "None")
 
         print("\n" + "=" * 80)
+    
     # ═════════════════════════════════════════════════════════════════
-    # 6. ВИЗУАЛИЗАЦИЯ
+    # 4. ВИЗУАЛИЗАЦИЯ
     # ═════════════════════════════════════════════════════════════════
+    
     def visualize_errors(self):
 
         print("\n" + "=" * 80)
@@ -572,7 +474,7 @@ class ErrorAnalyzer:
         return f"[{bar}] {percent:.1%}"
     
     # ═════════════════════════════════════════════════════════════════
-    # 7. ПОЛНЫЙ ОТЧЁТ
+    # 5. ПОЛНЫЙ ОТЧЁТ
     # ═════════════════════════════════════════════════════════════════
     
     def generate_full_report(self):
@@ -580,14 +482,15 @@ class ErrorAnalyzer:
         self.print_summary()
         self.visualize_errors()
         self.find_patterns()
+        
         for (true_class, pred_class), indices in self.error_pairs.items():
-
             if len(indices) > 0:
                 self.analyze_confusion_pair(
                     true_class,
                     pred_class,
                     top_n=5
                 )
+        
         self.analyze_conflicting_features(top_features=15)
         
         print("\n" + "=" * 80)
@@ -601,13 +504,16 @@ class ErrorAnalyzer:
 
 def analyze_model_errors(model, X_test, y_test, y_pred):
     """
-    Удобная функция для интеграции в train_model.py
+    Быстрый анализ ошибок модели
     
-    Использование в train_model.py:
+    Args:
+        model: sklearn pipeline
+        X_test: тестовые данные
+        y_test: истинные метки
+        y_pred: предсказанные метки
     
-    pred = best_model.predict(X_test)
-    from error_analysis import analyze_model_errors
-    analyze_model_errors(best_model, X_test, y_test, pred)
+    Returns:
+        ErrorAnalyzer объект
     """
     analyzer = ErrorAnalyzer(model, X_test, y_test, y_pred)
     analyzer.generate_full_report()
@@ -621,142 +527,74 @@ def analyze_model_errors(model, X_test, y_test, y_pred):
 if __name__ == "__main__":
 
     import joblib
-
     from sklearn.model_selection import train_test_split
 
-    from train_model import (
-        load_training_data,
-        preprocess_corpus
-    )
+    # Примечание: нужно импортировать из train_model.py
+    # from train_model import load_training_data, preprocess_corpus
 
     print("=" * 80)
     print("🔎 ЗАГРУЗКА МОДЕЛИ")
     print("=" * 80)
 
-    # ==========================================================
     # Загрузка модели
-    # ==========================================================
+    try:
+        model = joblib.load("models/final_pipeline.pkl")
+        print("✅ Модель загружена")
+    except FileNotFoundError:
+        print("❌ Модель не найдена в models/final_pipeline.pkl")
+        print("Пожалуйста, обучите модель предварительно")
+        exit(1)
 
-    model = joblib.load("models/final_pipeline.pkl")
-
-    print("✅ Модель загружена")
-
-    # ==========================================================
     # Загрузка данных
-    # ==========================================================
-
     print("\n📥 Загрузка датасета...")
-
-    df = load_training_data()
-
-    # ==========================================================
-    # Препроцессинг
-    # ==========================================================
-
-    print("\n🔧 Препроцессинг текстов...")
-
-    processed = preprocess_corpus(
-        df["text"].tolist(),
-        n_jobs=2
-    )
-
-    X, y = [], []
-
-    for text, label in zip(processed, df["sentiment"]):
-
-        if text.strip():
-
-            X.append(text)
-            y.append(label)
-
-    # ==========================================================
-    # Воссоздаём test split
-    # ВАЖНО: random_state должен совпадать с train_model.py
-    # ==========================================================
-
-    _, X_test, _, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.2,
-        stratify=y,
-        random_state=42
-    )
-
-    print(f"\n📊 Test examples: {len(X_test)}")
-
-    # ==========================================================
-    # Predict
-    # ==========================================================
-
-    print("\n🤖 Предсказания модели...")
-
-    y_pred = model.predict(X_test)
-
-    # ==========================================================
-    # Анализ ошибок
-    # ==========================================================
-
-    print("\n🔍 Запуск анализа ошибок...")
-
-    analyzer = ErrorAnalyzer(
-        model,
-        X_test,
-        y_test,
-        y_pred
-    )
-
-    analyzer.generate_full_report()
-    """
-    Демонстрация (требует обученную модель и тестовые данные):
     
-    from error_analysis import ErrorAnalyzer
-    from train_model import train_final_model
-    
-    # Обучение модели
-    model = train_final_model(X, y)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-    
-    # Анализ ошибок
-    y_pred = model.predict(X_test)
-    analyzer = ErrorAnalyzer(model, X_test, y_test, y_pred)
-    analyzer.generate_full_report()
-    """
-    print("""
-    Error Analysis Module
-    ════════════════════════════════════════════════════════════════════
-    
-    Использование:
-    
-    1. В train_model.py (в конце):
-    
-        from error_analysis import analyze_model_errors
+    try:
+        from train_model import load_training_data, preprocess_corpus
         
-        pred = best_model.predict(X_test)
-        analyze_model_errors(best_model, X_test, y_test, pred)
-    
-    2. Отдельно:
-    
-        from error_analysis import ErrorAnalyzer
-        
-        analyzer = ErrorAnalyzer(model, X_test, y_test, y_pred)
+        df = load_training_data()
+
+        # Препроцессинг
+        print("\n🔧 Препроцессинг текстов...")
+
+        processed = preprocess_corpus(
+            df["text"].tolist(),
+            n_jobs=2
+        )
+
+        X, y = [], []
+
+        for text, label in zip(processed, df["sentiment"]):
+            if text.strip():
+                X.append(text)
+                y.append(label)
+
+        # Воссоздаём test split
+        _, X_test, _, y_test = train_test_split(
+            X,
+            y,
+            test_size=0.2,
+            stratify=y,
+            random_state=42
+        )
+
+        print(f"\n📊 Test examples: {len(X_test)}")
+
+        # Predict
+        print("\n🤖 Предсказания модели...")
+        y_pred = model.predict(X_test)
+
+        # Анализ ошибок
+        print("\n🔍 Запуск анализа ошибок...")
+
+        analyzer = ErrorAnalyzer(
+            model,
+            X_test,
+            y_test,
+            y_pred
+        )
+
         analyzer.generate_full_report()
         
-        # Или отдельные анализы:
-        analyzer.print_summary()
-        analyzer.analyze_false_positives()
-        analyzer.analyze_false_negatives()
-        analyzer.find_patterns()
-        analyzer.analyze_conflicting_features()
-    
-    Методы:
-    ──────────────────────────────────────────────────────────────────
-    • print_summary()              - общая статистика по ошибкам
-    • analyze_false_positives()    - анализ ложных положительных
-    • analyze_false_negatives()    - анализ ложных отрицательных
-    • find_patterns()              - поиск паттернов в ошибках
-    • analyze_conflicting_features() - анализ противоречащих признаков
-    • visualize_errors()           - ASCII визуализация
-    • generate_full_report()       - полный отчёт
-    
-    ════════════════════════════════════════════════════════════════════
-    """)
+    except ImportError:
+        print("❌ Не удается импортировать train_model")
+        print("Пожалуйста, убедитесь что train_model.py доступен")

@@ -7,7 +7,6 @@ from botocore.config import Config
 from dotenv import load_dotenv
 import threading
 
-# Загружаем переменные окружения
 env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(env_path)
 
